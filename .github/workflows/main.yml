@@ -16,21 +16,21 @@ jobs:
           curl -L -o vless_universal.txt \
             https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt
       
-      - name: Upload to Yandex Disk
+      - name: Upload to Yandex Disk (into /VPN folder)
         env:
           YA_TOKEN: ${{ secrets.YANDEX_DISK_TOKEN }}
         run: |
           # 1. Получаем ссылку для загрузки
           UPLOAD_URL=$(curl -s -X GET \
-            "https://cloud-api.yandex.net/v1/disk/resources/upload?path=/vless_universal.txt&overwrite=true" \
+           "https://cloud-api.yandex.net/v1/disk/resources/upload?path=/VPN/vless_universal.txt&overwrite=true" \
             -H "Authorization: OAuth $YA_TOKEN" \
             | jq -r '.href')
           
           # 2. Загружаем файл
           if [ "$UPLOAD_URL" != "null" ] && [ -n "$UPLOAD_URL" ]; then
             curl -T vless_universal.txt "$UPLOAD_URL"
-            echo "✅ Файл успешно загружен на Яндекс.Диск"
+            echo "✅ Файл загружен в папку VPN"
           else
-            echo "Не удалось получить ссылку для загрузки"
+            echo "❌ Не удалось получить ссылку для загрузки"
             exit 1
           fi

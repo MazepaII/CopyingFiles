@@ -1,36 +1,48 @@
-name :  Backup file to Yandex Disk 
+name: Backup two files to Yandex Disk
 
-on : 
-  schedule : 
-    # Выполнять каждые 5 минут 
-    -  cron :  '*/5 * * * *' 
-  # Возможность запуска вручную из интерфейса GitHub
-  workflow_dispatch:
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # каждые 5 минут
+  workflow_dispatch:        # ручной запуск
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Download file from GitHub (raw)
+      # Скачиваем первый файл
+      - name: Download vless_universal.txt
         run: |
           curl -L -o vless_universal.txt \
             https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt
-      
+
+      # Скачиваем второй файл
+      - name: Download general.txt
+        run: |
+          curl -L -o general.txt \
+            https://raw.githubusercontent.com/CidVpn/cid-vpn-config/refs/heads/main/general.txt
+
+      # Загружаем оба файла на Яндекс.Диск (в корень)
       - name: Upload to Yandex Disk
         env:
           YA_TOKEN: ${{ secrets.YANDEX_DISK_TOKEN }}
         run: |
-          # 1. Получаем ссылку для загрузки
-          UPLOAD_URL=$(curl -s -X GET \
-            "https://cloud-api.yandex.net/v1/disk/resources/upload?path=/vless_universal.txt&overwrite=true" \
-            -H "Authorization: OAuth $YA_TOKEN" \
-            | jq -r '.href')
-          
-          # 2. Загружаем файл
-          if [ "$UPLOAD_URL" != "null" ] && [ -n "$UPLOAD_URL" ]; then
-            curl -T vless_universal.txt "$UPLOAD_URL"
-            echo "✅ Файл успешно загружен на Яндекс.Диск"
-          else
-            echo "❌ Не удалось получить ссылку для загрузки"
-            exit 1
-          fi
+          # Функция загрузки одного файла
+          upload_file() {
+            local file=$1
+            echo "Загружаю $file ..."
+            UPLOAD_URL=$(curl -s -X GET \
+              "https://cloud-api.yandex.net/v1/disk/resources/upload?path=/$file&overwrite=true" \
+              -H "Authorization: OAuth $YA_TOKEN" \
+              | jq -r '.href')
+            
+            if [ "$UPLOAD_URL" != "null" ] && [ -n "$UPLOAD_URL" ]; then
+              curl -T "$file" "$UPLOAD_URL"
+              echo "✅ $file загружен"
+            else
+              echo "❌ Ошибка при загрузке $file"
+              exit 1
+            fi
+          }
+
+          upload_file "vless_universal.txt"
+          upload_file "general.txt"

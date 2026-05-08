@@ -1,0 +1,36 @@
+name :  Backup file to Yandex Disk 
+
+on : 
+  schedule : 
+    # Выполнять каждые 5 минут 
+    -  cron :  '*/5 * * * *' 
+  # Возможность запуска вручную из интерфейса GitHub
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download file from GitHub (raw)
+        run: |
+          curl -L -o vless_universal.txt \
+            https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt
+      
+      - name: Upload to Yandex Disk
+        env:
+          YA_TOKEN: ${{ secrets.YANDEX_DISK_TOKEN }}
+        run: |
+          # 1. Получаем ссылку для загрузки
+          UPLOAD_URL=$(curl -s -X GET \
+            "https://cloud-api.yandex.net/v1/disk/resources/upload?path=/vless_universal.txt&overwrite=true" \
+            -H "Authorization: OAuth $YA_TOKEN" \
+            | jq -r '.href')
+          
+          # 2. Загружаем файл
+          if [ "$UPLOAD_URL" != "null" ] && [ -n "$UPLOAD_URL" ]; then
+            curl -T vless_universal.txt "$UPLOAD_URL"
+            echo "✅ Файл успешно загружен на Яндекс.Диск"
+          else
+            echo "Не удалось получить ссылку для загрузки"
+            exit 1
+          fi
